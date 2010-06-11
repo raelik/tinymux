@@ -39,8 +39,10 @@
 
 #if defined(TINYMUX_MODULES)
 
+const MUX_IID IID_IFunctionSink         = UINT64_C(0x000000020560E6D5);
 const MUX_CID CID_Log                   = UINT64_C(0x000000020CE18E7A);
 const MUX_CID CID_StubSlave             = UINT64_C(0x00000002267CA586);
+const MUX_IID IID_IFunctionControl      = UINT64_C(0x000000022E28F8FA);
 const MUX_IID IID_ISlaveControl         = UINT64_C(0x0000000250C158E9);
 const MUX_CID CID_QueryControlProxy     = UINT64_C(0x00000002683E889A);
 const MUX_IID IID_IServerEventsControl  = UINT64_C(0x000000026EE5256E);
@@ -53,6 +55,7 @@ const MUX_CID CID_StubSlaveProxy        = UINT64_C(0x00000002D2453099);
 const MUX_IID IID_IQueryControl         = UINT64_C(0x00000002ECD689FC);
 const MUX_IID IID_IServerEventsSink     = UINT64_C(0x00000002F0F2753F);
 const MUX_IID CID_QueryClient           = UINT64_C(0x00000002F571AB88);
+const MUX_CID CID_FunctionSource        = UINT64_C(0x00000002FE32BEA1);
 
 interface mux_ILog : public mux_IUnknown
 {
@@ -545,6 +548,17 @@ private:
 
 #define RS_TOP             (0)
 
+interface mux_IFunctionSink : public mux_IUnknown
+{
+public:
+};
+
+interface mux_IFunctionControl : public mux_IUnknown
+{
+public:
+    virtual MUX_RESULT Advise(mux_IFunctionSink *pIFunctionSink) = 0;
+};
+
 interface mux_IFunction : public mux_IUnknown
 {
 public:
@@ -552,6 +566,65 @@ public:
         dbref executor, dbref caller, dbref enactor, int eval,
         __in UTF8 *fargs[], int nfargs, __in const UTF8 *cargs[],
         int ncargs);
+};
+
+typedef struct FunctionSinkNode
+{
+    mux_IFunctionSink        *pSink;
+    struct FunctionSinkNode  *pNext;
+} FunctionSinkNode;
+
+extern FunctionSinkNode *g_pFunctionSinkListHead;
+
+class CFunctionSource : public mux_IFunctionControl, public mux_IMarshal
+{
+public:
+    // mux_IUnknown
+    //
+    virtual MUX_RESULT QueryInterface(MUX_IID iid, void **ppv);
+    virtual UINT32     AddRef(void);
+    virtual UINT32     Release(void);
+
+    // mux_IMarshal
+    //
+    virtual MUX_RESULT GetUnmarshalClass(MUX_IID riid, marshal_context ctx, MUX_CID *pcid);
+    virtual MUX_RESULT MarshalInterface(QUEUE_INFO *pqi, MUX_IID riid, marshal_context ctx);
+    virtual MUX_RESULT UnmarshalInterface(QUEUE_INFO *pqi, MUX_IID riid, void **ppv);
+    virtual MUX_RESULT ReleaseMarshalData(QUEUE_INFO *pqi);
+    virtual MUX_RESULT DisconnectObject(void);
+
+    // mux_IFunctionControl
+    //
+    virtual MUX_RESULT Advise(mux_IFunctionSink *pIFunctionSink);
+
+    CFunctionSource(void);
+    MUX_RESULT FinalConstruct(void);
+    virtual ~CFunctionSource();
+
+private:
+    UINT32 m_cRef;
+    mux_IFunctionSink *m_pSink;
+};
+
+class CFunctionSourceFactory : public mux_IClassFactory
+{
+public:
+    // mux_IUnknown
+    //
+    virtual MUX_RESULT QueryInterface(MUX_IID iid, void **ppv);
+    virtual UINT32     AddRef(void);
+    virtual UINT32     Release(void);
+
+    // mux_IClassFactory
+    //
+    virtual MUX_RESULT CreateInstance(mux_IUnknown *pUnknownOuter, MUX_IID iid, void **ppv);
+    virtual MUX_RESULT LockServer(bool bLock);
+
+    CFunctionSourceFactory(void);
+    virtual ~CFunctionSourceFactory();
+
+private:
+    UINT32 m_cRef;
 };
 
 #endif

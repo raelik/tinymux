@@ -16,14 +16,15 @@
 
 #if defined(TINYMUX_MODULES)
 
-#define NUM_CLASSES 4
-static MUX_CLASS_INFO netmux_classes[NUM_CLASSES] =
+static MUX_CLASS_INFO netmux_classes[] =
 {
     { CID_Log                },
     { CID_ServerEventsSource },
     { CID_StubSlaveProxy     },
-    { CID_QueryClient        }
+    { CID_QueryClient        },
+    { CID_FunctionSource     }
 };
+#define NUM_CLASSES (sizeof(netmux_classes)/sizeof(netmux_classes[0]))
 
 extern "C" MUX_RESULT DCL_API netmux_GetClassObject(MUX_CID cid, MUX_IID iid, void **ppv)
 {
@@ -108,6 +109,26 @@ extern "C" MUX_RESULT DCL_API netmux_GetClassObject(MUX_CID cid, MUX_IID iid, vo
 
         mr = pQueryClientFactory->QueryInterface(iid, ppv);
         pQueryClientFactory->Release();
+    }
+    else if (CID_FunctionSource == cid)
+    {
+        CFunctionSourceFactory *pFunctionSourceFactory = NULL;
+        try
+        {
+            pFunctionSourceFactory = new CFunctionSourceFactory;
+        }
+        catch (...)
+        {
+            ; // Nothing.
+        }
+
+        if (NULL == pFunctionSourceFactory)
+        {
+            return MUX_E_OUTOFMEMORY;
+        }
+
+        mr = pFunctionSourceFactory->QueryInterface(iid, ppv);
+        pFunctionSourceFactory->Release();
     }
     return mr;
 }
@@ -1577,6 +1598,391 @@ UINT32 CResultsSet::AddRef(void)
 {
     m_cRef++;
     return m_cRef;
+}
+
+// CFunctionSource component which is not directly accessible.
+//
+CFunctionSource::CFunctionSource(void) : m_cRef(1)
+{
+}
+
+FunctionSinkNode *g_pFunctionSinkListHead = NULL;
+
+CFunctionSource::~CFunctionSource()
+{
+    if (NULL != m_pSink)
+    {
+        FunctionSinkNode *p = g_pFunctionSinkListHead;
+        FunctionSinkNode *q = NULL;
+        while (NULL != p)
+        {
+            if (p->pSink == m_pSink)
+            {
+                // Unlink node p from list.
+                //
+                if (NULL == q)
+                {
+                    g_pFunctionSinkListHead = p->pNext;
+                }
+                else
+                {
+                    q->pNext = p->pNext;
+                }
+                p->pNext = NULL;
+
+                // Free sink and node.
+                //
+                p->pSink->Release();
+                p->pSink = NULL;
+                delete p;
+                break;
+            }
+            q = p;
+            p = p->pNext;
+        }
+
+        m_pSink->Release();
+        m_pSink = NULL;
+    }
+}
+
+MUX_RESULT CFunctionSource::QueryInterface(MUX_IID iid, void **ppv)
+{
+    if (mux_IID_IUnknown == iid)
+    {
+        *ppv = static_cast<mux_IFunctionControl *>(this);
+    }
+    else if (IID_IFunctionControl == iid)
+    {
+        *ppv = static_cast<mux_IFunctionControl *>(this);
+    }
+    else if (mux_IID_IMarshal == iid)
+    {
+        *ppv = static_cast<mux_IMarshal *>(this);
+    }
+    else
+    {
+        *ppv = NULL;
+        return MUX_E_NOINTERFACE;
+    }
+    reinterpret_cast<mux_IUnknown *>(*ppv)->AddRef();
+    return MUX_S_OK;
+}
+
+UINT32 CFunctionSource::AddRef(void)
+{
+    m_cRef++;
+    return m_cRef;
+}
+
+UINT32 CFunctionSource::Release(void)
+{
+    m_cRef--;
+    if (0 == m_cRef)
+    {
+        delete this;
+        return 0;
+    }
+    return m_cRef;
+}
+
+MUX_RESULT CFunctionSource::GetUnmarshalClass(MUX_IID riid, marshal_context ctx, MUX_CID *pcid)
+{
+    UNUSED_PARAMETER(ctx);
+
+    if (NULL == pcid)
+    {
+        return MUX_E_INVALIDARG;
+    }
+#if 0
+    else if (  IID_IFunctionControl == riid
+            && CrossProcess == ctx)
+    {
+        // We only support cross-process at the moment.
+        //
+        *pcid = CID_FunctionControlProxy;
+        return MUX_S_OK;
+    }
+#endif
+    return MUX_E_NOTIMPLEMENTED;
+}
+
+MUX_RESULT CFunctionControl_Call(CHANNEL_INFO *pci, QUEUE_INFO *pqi)
+{
+    mux_IFunctionControl *pIFunctionControl = static_cast<mux_IFunctionControl *>(pci->pInterface);
+    if (NULL == pIFunctionControl)
+    {
+        return MUX_E_NOINTERFACE;
+    }
+
+    UINT32 iMethod;
+    size_t nWanted = sizeof(iMethod);
+    if (  !Pipe_GetBytes(pqi, &nWanted, &iMethod)
+       || nWanted != sizeof(iMethod))
+    {
+        return MUX_E_INVALIDARG;
+    }
+
+    // The IUnknown methods (0, 1, and 2) do not make it across, so we don't
+    // attempt to handle them here.  Instead, when the reference count on
+    // CFunctionSourceProxy goes to zero, it drops the connection and destroys itself.
+    // We see that as a call to CFunctionControl_Disconnect.
+    //
+#if 0
+    switch (iMethod)
+    {
+    case 3:
+        break;
+    }
+#endif
+    return MUX_E_NOTIMPLEMENTED;
+}
+
+MUX_RESULT CFunctionControl_Msg(CHANNEL_INFO *pci, QUEUE_INFO *pqi)
+{
+    // The same as CFunctionControl_Call except that the caller is no longer
+    // available to receive the ReturnFrame.
+    //
+    return CFunctionControl_Call(pci, pqi);
+}
+
+MUX_RESULT CFunctionControl_Disconnect(CHANNEL_INFO *pci, QUEUE_INFO *pqi)
+{
+    UNUSED_PARAMETER(pqi);
+
+    // Get our interface pointer from the channel.
+    //
+    mux_IUnknown *pIUnknown= static_cast<mux_IUnknown *>(pci->pInterface);
+    pci->pInterface = NULL;
+
+    // Tear down our side of the communication.  Our callback functions will
+    // no longer be called.
+    //
+    Pipe_FreeChannel(pci);
+
+    if (NULL != pIUnknown)
+    {
+        pIUnknown->Release();
+        return MUX_S_OK;
+    }
+    else
+    {
+        return MUX_E_NOINTERFACE;
+    }
+}
+
+MUX_RESULT CFunctionSource::MarshalInterface(QUEUE_INFO *pqi, MUX_IID riid, marshal_context ctx)
+{
+    // Parameter validation and initialization.
+    //
+    MUX_RESULT mr = MUX_S_OK;
+    if (NULL == pqi)
+    {
+        mr = MUX_E_INVALIDARG;
+    }
+    else if (IID_IFunctionControl != riid)
+    {
+        mr = MUX_E_FAIL;
+    }
+    else if (CrossProcess != ctx)
+    {
+        mr = MUX_E_NOTIMPLEMENTED;
+    }
+    else
+    {
+        mux_IFunctionControl *pIFunctionControl = NULL;
+        mr = QueryInterface(IID_IFunctionControl, (void **)&pIFunctionControl);
+        if (MUX_SUCCEEDED(mr))
+        {
+            // Construct a packet sufficient to allow the proxy to communicate with us.
+            //
+            CHANNEL_INFO *pChannel = Pipe_AllocateChannel(CFunctionControl_Call, CFunctionControl_Msg, CFunctionControl_Disconnect);
+            if (NULL != pChannel)
+            {
+                pChannel->pInterface = pIFunctionControl;
+                Pipe_AppendBytes(pqi, sizeof(pChannel->nChannel), (UTF8*)(&pChannel->nChannel));
+                mr =  MUX_S_OK;
+            }
+            else
+            {
+                pIFunctionControl->Release();
+                pIFunctionControl = NULL;
+                mr = MUX_E_OUTOFMEMORY;
+            }
+        }
+    }
+    return mr;
+}
+
+MUX_RESULT CFunctionSource::UnmarshalInterface(QUEUE_INFO *pqi, MUX_IID riid, void **ppv)
+{
+    UNUSED_PARAMETER(pqi);
+    UNUSED_PARAMETER(riid);
+    UNUSED_PARAMETER(ppv);
+
+    return MUX_E_NOTIMPLEMENTED;
+}
+
+MUX_RESULT CFunctionSource::ReleaseMarshalData(QUEUE_INFO *pqi)
+{
+    // Since the Marshal Data is like an extra reference on an object, if the
+    // Marshaled Data is never unmarshalled, libmux should use this function
+    // to release the reference to the component.  This is only implemented on
+    // the server side -- not the proxy.
+    //
+    UINT32 nChannel;
+    size_t nWanted = sizeof(nChannel);
+    if (  Pipe_GetBytes(pqi, &nWanted, &nChannel)
+       && sizeof(nChannel) == nWanted)
+    {
+        CHANNEL_INFO *pChannel = Pipe_FindChannel(nChannel);
+        if (NULL != pChannel)
+        {
+            CFunctionControl_Disconnect(pChannel, pqi);
+        }
+    }
+    return MUX_S_OK;
+}
+
+MUX_RESULT CFunctionSource::DisconnectObject(void)
+{
+    // This is called when the hosting process is about to go down to give the
+    // component a chance to notify its proxy that it is about to shut down.
+    // This is only implemented on the server side -- not the proxy.
+    //
+    // TODO: There isn't a mechanism for sending such a notification, yet.
+    //
+    return MUX_S_OK;
+}
+
+MUX_RESULT CFunctionSource::Advise(mux_IFunctionSink *pIFunctionSink)
+{
+    if (NULL == pIFunctionSink)
+    {
+        return MUX_E_INVALIDARG;
+    }
+
+    // If this pointer is already in the list, we will prevent it from being
+    // added again.
+    //
+    FunctionSinkNode *p = g_pFunctionSinkListHead;
+    while (NULL != p)
+    {
+        if (p->pSink == pIFunctionSink)
+        {
+            return MUX_E_FAIL;
+        }
+    }
+
+    // Allocate a list node.
+    //
+    p = NULL;
+    try
+    {
+        p = new FunctionSinkNode;
+    }
+    catch (...)
+    {
+        ; // Nothing.
+    }
+
+    if (NULL == p)
+    {
+        return MUX_E_OUTOFMEMORY;
+    }
+
+    // Add the pointer to the list.
+    //
+    p->pNext = g_pFunctionSinkListHead;
+    pIFunctionSink->AddRef();
+    p->pSink = pIFunctionSink;
+    pIFunctionSink->AddRef();
+    m_pSink = pIFunctionSink;
+    g_pFunctionSinkListHead = p;
+
+    return MUX_S_OK;
+}
+
+
+// Factory for CFunctionSource component which is not directly accessible.
+//
+CFunctionSourceFactory::CFunctionSourceFactory(void) : m_cRef(1)
+{
+}
+
+CFunctionSourceFactory::~CFunctionSourceFactory()
+{
+}
+
+MUX_RESULT CFunctionSourceFactory::QueryInterface(MUX_IID iid, void **ppv)
+{
+    if (mux_IID_IUnknown == iid)
+    {
+        *ppv = static_cast<mux_IClassFactory *>(this);
+    }
+    else if (mux_IID_IClassFactory == iid)
+    {
+        *ppv = static_cast<mux_IClassFactory *>(this);
+    }
+    else
+    {
+        *ppv = NULL;
+        return MUX_E_NOINTERFACE;
+    }
+    reinterpret_cast<mux_IUnknown *>(*ppv)->AddRef();
+    return MUX_S_OK;
+}
+
+UINT32 CFunctionSourceFactory::AddRef(void)
+{
+    m_cRef++;
+    return m_cRef;
+}
+
+UINT32 CFunctionSourceFactory::Release(void)
+{
+    m_cRef--;
+    if (0 == m_cRef)
+    {
+        delete this;
+        return 0;
+    }
+    return m_cRef;
+}
+
+MUX_RESULT CFunctionSourceFactory::CreateInstance(mux_IUnknown *pUnknownOuter, MUX_IID iid, void **ppv)
+{
+    // Disallow attempts to aggregate this component.
+    //
+    if (NULL != pUnknownOuter)
+    {
+        return MUX_E_NOAGGREGATION;
+    }
+
+    CFunctionSource *pLog = NULL;
+    try
+    {
+        pLog = new CFunctionSource;
+    }
+    catch (...)
+    {
+        ; // Nothing.
+    }
+
+    if (NULL == pLog)
+    {
+        return MUX_E_OUTOFMEMORY;
+    }
+
+    MUX_RESULT mr = pLog->QueryInterface(iid, ppv);
+    pLog->Release();
+    return mr;
+}
+
+MUX_RESULT CFunctionSourceFactory::LockServer(bool bLock)
+{
+    UNUSED_PARAMETER(bLock);
+    return MUX_S_OK;
 }
 
 #endif
