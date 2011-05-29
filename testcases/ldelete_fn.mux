@@ -20,9 +20,11 @@
         setr(0,sha1(
             [ldelete(This is not a test, 3)]
             [ldelete(Yet@Another@Mundane@List, 3, @)]
+            [ldelete(lemon|orange|pear|apple,2 3,|)]
+            [ldelete(foo bar baz boing,3,,%b~%b)]
           )
         ),
-        127972D9CE563040CA8DB078CF5AB308C7C51E76
+        969E5FCAE972DC163F920E5EA1351F5E36247A4F
       )=
   {
     @log smoke=TC001: Help file examples. Succeeded.
@@ -52,29 +54,32 @@
 #
 # Test Case #3 - Vary number of arguments.
 #
-# On 2.6, ldelete(%b,1) -->
-# On 2.7 and later, ldelete(%b,1) --> %b
+# On 2.10 and later, space-delimited lists are always cleaned up.
+#
+#                         2.6    2.7    2.10
+# ldelete(%b%b%b,1)  -->  ''    '   '    ''
+# ldelete(b%b%b%b,2) -->  'b'   'b   '   'b'
+# ldelete(%bb%b%b,2) --> ' b'   ' b  '   'b'
+# ldelete(%b%ba%b,2) --> '  a'  '  a '   'a'
 #
 &tr.tc003 test_ldelete_fn=
   @if strmatch(
         setr(0,sha1(
             [iter(-1 0 1,ldelete(,##,|))]
-            [iter(2 1 0 -1,ldelete(a,##,|))]
-            [iter(3 2 1 0 -1,ldelete(a|a,##,|))]
-            [iter(4 3 2 1 0 -1,ldelete(a|a|a|a,##,|))]
+            [iter(2 1 0 -1 -2,ldelete(a,##,|))]
+            [iter(3 2 1 0 -1 -2 -3,ldelete(a|a,##,|))]
+            [iter(4 3 2 1 0 -1 -2 -3 -4,ldelete(a|a|a|a,##,|))]
             [iter(1 0 -1,ldelete(,##))]
             [iter(0 -1,ldelete(%b,##))]
-            [iter(2 1 0 -1,ldelete(a,##))]
-            [iter(3 2 1 0,ldelete(a b,##))]
-            [iter(4 3 2 1 0,ldelete(a b c,##))]
-            [iter(5 4 3 2 1 0,ldelete(a b c d,##))]
-            [iter(6 5 4 3 2 1 0,ldelete(a b c d e,##))]
-            [iter(7 6 5 4 3 2 1 0,ldelete(a b c d e f,##))]
-            [iter(8 7 6 5 4 3 2 1 0,ldelete(a b c d e f g,##))]
-            [iter(9 8 7 6 5 4 3 2 1 0,ldelete(a b c d e f g h,##))]
+            [iter(2 1 0 -1 -2,ldelete(a,##))]
+            [iter(3 2 1 0 -1 -2,ldelete(a b,##))]
+            [iter(4 3 2 1 0 -1 -2,ldelete(a b c,##))]
+            [iter(5 4 3 2 1 0 -1 -2 -3,ldelete(a b c d,##))]
+            [iter(6 5 4 3 2 1 0 -1 -2 -3 -4,ldelete(a b c d e,##))]
+            [iter(7 6 5 4 3 2 1 0 -1 -2 -3 -4 -5,ldelete(a b c d e f,##))]
           )
         ),
-        77C716845DC2D91C4BA1DEF5D91506CAF69C5121
+        2AF65D030FF814EF45DACA493104E36AE7D14550
       )=
   {
     @log smoke=TC003: Vary number of arguments. Succeeded.
@@ -89,16 +94,16 @@
 &tr.tc004 test_ldelete_fn=
   @if strmatch(
         setr(0,sha1(
-            [iter(-1 1 2 0,ldelete(%b%b%b,##)]
-            [iter(-1 1 2 0,ldelete(b%b%b%b,##)]
-            [iter(-1 1 2 0,ldelete(%bb%b%b,##)]
-            [iter(-1 1 2 0,ldelete(a%b%bb%b,##)]
-            [iter(-1 1 2 0,ldelete(%ba%b%bb,##)]
-            [iter(-1 1 2 0,ldelete(%b%ba%b,##)]
-            [iter(-1 1 2 0,ldelete(%b%b%ba,##)]
+            [iter(-2 -1 1 2 0,ldelete(%b%b%b,##))]
+            [iter(-2 -1 1 2 0,ldelete(b%b%b%b,##))]
+            [iter(-2 -1 1 2 0,ldelete(%bb%b%b,##))]
+            [iter(-2 -1 1 2 0,ldelete(a%b%bb%b,##))]
+            [iter(-2 -1 1 2 0,ldelete(%ba%b%bb,##))]
+            [iter(-2 -1 1 2 0,ldelete(%b%ba%b,##))]
+            [iter(-2 -1 1 2 0,ldelete(%b%b%ba,##))]
           )
         ),
-        7BB55CB078E198FABD34110BAD8D3C97EC8764F1
+        28AE513FCB71725FC9EAD7619E781F652A45CDD5
       )=
   {
     @log smoke=TC004: ldelete walk two elements through whitespace. Succeeded.
@@ -109,6 +114,10 @@
 -
 #
 # Test Case #5 - Walk whitespace through elements
+#
+# When no element is removed from a space-delimited list, 2.6 cleans the list
+# a little anyway -- removing spaces from the end.  In the same situations,
+# 2.7 passes the list through unchanged.
 #
 &tr.tc005 test_ldelete_fn=
   @if strmatch(
@@ -134,7 +143,7 @@
             [iter(3 0 7 2 8 4 1 6 9 5 -1,ldelete(a b c d e f g h%b%b,##))]
           )
         ),
-        FE04D719B34FD31B40A9ABD211930AC69E3CB312
+        06BC0B2C4498251DCB66906151E5045D529F357C
       )=
   {
     @log smoke=TC005: ldelete walk whitespace through elements. Succeeded.
@@ -161,7 +170,7 @@
             [iter(2 7 6 9 3 8 -1 4 5 0 1,ldelete(a-b-c-d-e-f-g-h,##,-))]
           )
         ),
-        3B634BB220F534E1C9739D8C6A62BCF28FCFC655
+        48F51941BB8D591C5EB0A65335EFA50CA2C89E00
       )=
   {
     @log smoke=TC006: ldelete vary elements with single-hyphen delimiter. Succeeded.
@@ -185,7 +194,7 @@
             [iter(-1 2 0 1,ldelete(---a,##,-))]
           )
         ),
-        B016A8EFCC6DF4325CA87867E0B9A2568F780D53
+        97B65A9B641B88CFED417E9597E03470B2F4E213
       )=
   {
     @log smoke=TC007: ldelete walk two elements through single-hyphens. Succeeded.
@@ -200,7 +209,7 @@
 &tr.tc008 test_ldelete_fn=
   @if strmatch(
         setr(0,sha1(
-            [iter(1 2 9 3 4 6 0 5 -1 7 8,ldelete(a-b-c-d-e-f-g-h,i##,-))]
+            [iter(1 2 9 3 4 6 0 5 -1 7 8,ldelete(a-b-c-d-e-f-g-h,##,-))]
             [iter(4 0 6 7 8 3 -1 9 1 2 5,ldelete(-a-b-c-d-e-f-g-h,##,-))]
             [iter(3 5 -1 7 8 2 0 1 9 4 6,ldelete(a--b-c-d-e-f-g-h,##,-))]
             [iter(4 -1 0 6 7 3 8 5 2 1 9,ldelete(a-b--c-d-e-f-g-h,##,-))]
@@ -221,7 +230,7 @@
             [iter(3 0 8 1 4 7 6 2 9 -1 5,ldelete(a-b-c-d-e-f-g-h--,##,-))]
           )
         ),
-        1D849DDB28A0C8E94299F32F8009D390BB2148FA
+        48AEAD4CD8ECAA70EEBA372761EF1F331E622124
       )=
   {
     @log smoke=TC008: ldelete walk single-hypens through elements. Succeeded.;
