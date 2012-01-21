@@ -214,7 +214,7 @@ $-COMMANDS
         that room's contents.
 
   Example:
-    > @aconnect me = check.my.mailbox
+    > @aconnect me=@mail
 
   Related Topics: @adisconnect.
 
@@ -4551,20 +4551,31 @@ ANSI CODES
 & ANSI SUBSTITUTION
 ANSI SUBSTITUTION
 
-  The percent substitution %x<color code> can be used instead of ansi(), and
-  is more efficient.  For example, the equivalent to '[ansi(rBf,Color!)]'
-  would be: '%xr%xB%xfColor!%xn'.  The %xn (return to normal) is understood
-  and therefore optional.
+  The ANSI percent substitutions (%x, %X, %c, and %C) can be used instead of
+  ansi(), and they are more efficient.  For example, the equivalent to
+  '[ansi(rBf,Color!)]' would be: '%xr%xB%xfColor!%xn'.  The %xn (return to
+  normal) is understood and therefore optional.
 
-  %x is preferred, however %c may also be used. They are equivalent.
+  %x is equivalent to %c, and %X is equivalent to %C, however, translate()
+  always produces sequences of %x and %X. So, %x and %X are 'preferred'.
 
-  To express a specific RGB (red, green, blue) color value, either of the two
-  forms may be used:
+  The color code following %x or %X can be:
 
-    %x<#RRGGBB> (%x<#000000> through %x<#FFFFFF>) - HTML color codes
-    %x<R G B> (%x<0 0 0> through %x<255 255 255>) - RGB decimal vector
+    Single letter (%xb, %xc, %xf, %xg, %xh, %xi, %xm, %xn, %xr, %xu, %xw, %xx,
+      %xy, %xB, %xC, %xG, %xM, %xR, %xW, %xX, and %xY)
 
-  Related Topics: ansi(), ANSI CODES, COLOR256.
+    HTML color code (%x<#RRGGBB> or %x<#000000> through %x<#FFFFFF>)
+
+    RGB decimal vector (%x<R G B> or %x<0 0 0> through %x<255 255 255>)
+
+  Reg, Green, and Blue are abbreviated as R, G, and B.
+
+  For the single-letter form, the case of the letter determines whether the
+  color specifies foreground (lower-case) or background (upper-case).  For the
+  HTML and decimal-vector forms, the case of the %x or %X determines whether
+  the specified color is foreground or background.
+
+  Related Topics: ansi(), ANSI CODES, COLOR256, translate().
 
 & ANSI()
 ANSI()
@@ -4903,6 +4914,27 @@ BAND()
   boolean false in softcode.
 
   Related Topics: shl(), shr(), bnand(), bor(), bxor().
+
+& BASECONV()
+BASECONV()
+
+  FUNCTION: baseconv(<number>, <input radix>, <output radix>)
+
+  Converts <number>, which is in base <input radix> to base <output radix>.
+  The bases can be between 2 (binary) and 64, inclusive.  Positive and
+  negative numbers are supported except for bases 63 and base 64 where - is
+  not available. When converting from base 64, + and / have place value 62 and
+  63, respectively.
+
+  Bases 36 and under use the following symbols:
+
+    0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ
+
+  Bases over 36 use base64 url string:
+
+    ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_
+
+  Related Topics: pack(), unpack()
 
 & BEEP()
 BEEP()
@@ -5445,8 +5477,8 @@ COLORDEPTH()
   idle time is returned.
 
   Even though the function accepts a port number, there is currently no means
-  to negotiation client color depth, so the result is always based upon player 
-  flags which are the same in every session. The flags are ANSI, COLOR256, and 
+  to negotiation client color depth, so the result is always based upon player
+  flags which are the same in every session. The flags are ANSI, COLOR256, and
   HTML.
 
   You and any object with the See_All @power may obtain the color depth of
@@ -7272,11 +7304,11 @@ FULLNAME()
 & FUNCTION CLASSES
 FUNCTION CLASSES
 
-  Arithmetic:                ABS ADD BAND BNAND BOR BXOR CEIL CRC32 DEC DIE
-                             DIGEST DISTRIBUTE FDIV FLOORDIV FMOD IABS IADD
-                             IDIV IMUL INC ISIGN ISUB MOD MUL PACK POWER RAND
-                             REMAINDER SHA1 SHL SHR SIGN SUB SUCCESSES SQRT
-                             UNPACK
+  Arithmetic:                ABS ADD BAND BASECONV BNAND BOR BXOR CEIL CRC32
+                             DEC DIE DIGEST DISTRIBUTE FDIV FLOORDIV FMOD IABS
+                             IADD IDIV IMUL INC ISIGN ISUB MOD MUL PACK POWER
+                             RAND REMAINDER SHA1 SHL SHR SIGN SUB SUCCESSES
+                             SQRT UNPACK
 
   Comsystem Information:     CHANNELS CHANOBJ COMALIAS COMTITLE CWHO
 
@@ -7371,81 +7403,81 @@ FUNCTION LIST
     @@()        ABS()       ACCENT()    ACOS()      ADD()       AFTER()
     ALPHAMAX()  ALPHAMIN()  AND()       ANDBOOL()   ANDFLAGS()  ANSI()
     APOSS()     ART()       ASIN()      ATAN()      ATAN2()     ATTRCNT()
-    BAND()      BEEP()      BEFORE()    BITTYPE()   BNAND()     BOR()
-    BXOR()      CAND()      CANDBOOL()  CANSEE()    CAPSTR()    CASE()
-    CAT()       CEIL()      CENTER()    CHANNELS()  CHANOBJ()   CHILDREN()
-    CHOOSE()    CHR()       CMDS()      COLORDEPTH()COLUMNS()   COMALIAS()
-    COMP()      COMTITLE()  CON()       CONFIG()    CONN()      CONNLAST()
-    CONNLEFT()  CONNMAX()   CONNNUM()   CONNRECORD()CONNTOTAL() CONTROLS()
-    CONVSECS()  CONVTIME()  COR()       CORBOOL()   COS()       CPAD()
-    CRC32()     CREATE()    CTIME()     CTU()       CWHO()      DEC()
-    DECRYPT()   DEFAULT()   DELETE()    DESTROY()   DIE()       DIGEST()
-    DIGITTIME() DIST2D()    DIST3D()    DISTRIBUTE()DOING()     DUMPING()
-    E()         EDEFAULT()  EDIT()      ELEMENTS()  ELOCK()     EMIT()
-    ENCRYPT()   ENTRANCES() EQ()        ERROR()     ESCAPE()    ETIMEFMT()
-    EVAL()      EXIT()      EXP()       EXPTIME()   EXTRACT()   FCOUNT()
-    FDEPTH()    FDIV()      FILTER()    FILTERBOOL()FINDABLE()  FIRST()
-    FLAGS()     FLOOR()     FLOORDIV()  FMOD()      FOLD()      FOREACH()
+    BAND()      BASECONV()  BEEP()      BEFORE()    BITTYPE()   BNAND()
+    BOR()       BXOR()      CAND()      CANDBOOL()  CANSEE()    CAPSTR()
+    CASE()      CAT()       CEIL()      CENTER()    CHANNELS()  CHANOBJ()
+    CHILDREN()  CHOOSE()    CHR()       CMDS()      COLORDEPTH()COLUMNS()
+    COMALIAS()  COMP()      COMTITLE()  CON()       CONFIG()    CONN()
+    CONNLAST()  CONNLEFT()  CONNMAX()   CONNNUM()   CONNRECORD()CONNTOTAL()
+    CONTROLS()  CONVSECS()  CONVTIME()  COR()       CORBOOL()   COS()
+    CPAD()      CRC32()     CREATE()    CTIME()     CTU()       CWHO()
+    DEC()       DECRYPT()   DEFAULT()   DELETE()    DESTROY()   DIE()
+    DIGEST()    DIGITTIME() DIST2D()    DIST3D()    DISTRIBUTE()DOING()
+    DUMPING()   E()         EDEFAULT()  EDIT()      ELEMENTS()  ELOCK()
+    EMIT()      ENCRYPT()   ENTRANCES() EQ()        ERROR()     ESCAPE()
+    ETIMEFMT()  EVAL()      EXIT()      EXP()       EXPTIME()   EXTRACT()
+    FCOUNT()    FDEPTH()    FDIV()      FILTER()    FILTERBOOL()FINDABLE()
+    FIRST()     FLAGS()     FLOOR()     FLOORDIV()  FMOD()      FOLD()
 
 ("help function list2" for more)
 
 & FUNCTION LIST2
 FUNCTION LIST (continued)
 
-    FULLNAME()  GET()       GET_EVAL()  GRAB()      GRABALL()   GREP()
-    GREPI()     GT()        GTE()       HASATTR()   HASATTRP()  HASFLAG()
-    HASPOWER()  HASQUOTA()  HASRXLEVEL()HASTXLEVEL()HASTYPE()   HEIGHT()
-    HOME()      HOST()      IABS()      IADD()      IDIV()      IDLE()
-    IF()        IFELSE()    ILEV()      IMUL()      INC()       INDEX()
-    INSERT()    INZONE()    ISDBREF()   ISIGN()     ISINT()     ISNUM()
-    ISRAT()     ISUB()      ISWORD()    ITEMIZE()   ITER()      LADD()
-    LAND()      LAST()      LASTCREATE()LATTR()     LATTRCMDS() LATTRP()
-    LCMDS()     LCON()      LCSTR()     LDELETE()   LEXITS()    LFLAGS()
-    LINK()      LIST()      LISTRLEVELS() LIT()     LJUST()     LN()
-    LNUM()      LOC()       LOCALIZE()  LOCATE()    LOCK()      LOG()
-    LOR()       LPAD()      LPARENT()   LPORTS()    LPOS()      LRAND()
-    LROOMS()    LT()        LTE()       LWHO()      MAIL()      MAILFROM()
-    MAILSIZE()  MAILJ()     MAILSUBJ()  MAP()       MATCH()     MATCHALL()
-    MAX()       MEMBER()    MERGE()     MID()       MIN()       MIX()
-    MOD()       MONEY()     MONIKER()   MOTD()      MTIME()     MUDNAME()
-    MUL()       MUNGE()     NAME()      NEARBY()    NEQ()       NEXT()
-    NOT()       NULL()      NUM()       OBJ()       OBJEVAL()   OBJMEM()
+    FOREACH()   FULLNAME()  GET()       GET_EVAL()  GRAB()      GRABALL()
+    GREP()      GREPI()     GT()        GTE()       HASATTR()   HASATTRP()
+    HASFLAG()   HASPOWER()  HASQUOTA()  HASRXLEVEL()HASTXLEVEL()HASTYPE()
+    HEIGHT()    HOME()      HOST()      IABS()      IADD()      IDIV()
+    IDLE()      IF()        IFELSE()    ILEV()      IMUL()      INC()
+    INDEX()     INSERT()    INZONE()    ISDBREF()   ISIGN()     ISINT()
+    ISNUM()     ISRAT()     ISUB()      ISWORD()    ITEMIZE()   ITER()
+    LADD()      LAND()      LAST()      LASTCREATE()LATTR()     LATTRCMDS()
+    LATTRP()    LCMDS()     LCON()      LCSTR()     LDELETE()   LEXITS()
+    LFLAGS()    LINK()      LIST()      LISTRLEVELS() LIT()     LJUST()
+    LN()        LNUM()      LOC()       LOCALIZE()  LOCATE()    LOCK()
+    LOG()       LOR()       LPAD()      LPARENT()   LPORTS()    LPOS()
+    LRAND()     LROOMS()    LT()        LTE()       LWHO()      MAIL()
+    MAILFROM()  MAILSIZE()  MAILJ()     MAILSUBJ()  MAP()       MATCH()
+    MATCHALL()  MAX()       MEMBER()    MERGE()     MID()       MIN()
+    MIX()       MOD()       MONEY()     MONIKER()   MOTD()      MTIME()
+    MUDNAME()   MUL()       MUNGE()     NAME()      NEARBY()    NEQ()
+    NEXT()      NOT()       NULL()      NUM()       OBJ()       OBJEVAL()
 
 ("help function list3" for more)
 
 & FUNCTION LIST3
 FUNCTION LIST (continued)
 
-    OEMIT()     OR()        ORBOOL()    ORD()       ORFLAGS()   OWNER()
-    PACK()      PARENT()    PARSE()     PEMIT()     PFIND()     PI()
-    PICKRAND()  PLAYMEM()   PMATCH()    POLL()      PORTS()     POS()
-    POSS()      POWER()     POWERS()    R()         RAND()      REGMATCH()
-    REGMATCHI() REGRAB()    REGRABALL() REGRABALLI()REGRABI()   REMAINDER()
-    REMIT()     REMOVE()    REPEAT()    REPLACE()   REST()      RESTARTS()
-    RESTARTSECS()           RESTARTTIME()           REVERSE()   REVWORDS()
-    RIGHT()     RJUST()     RLOC()      ROMAN()     ROOM()      ROUND()
-    RPAD()      RXLEVEL()   S()         SCRAMBLE()  SEARCH()    SECS()
-    SECURE()    SET()       SETDIFF()   SETINTER()  SETNAME()   SETPARENT()
-    SETQ()      SETR()      SETUNION()  SHA1()      SHL()       SHR()
-    SHUFFLE()   SIGN()      SIN()       SINGLETIME()SORT()      SORTBY()
-    SPACE()     SPELLNUM()  SPLICE()    SQL()       SQRT()      SQUISH()
-    STARTSECS() STARTTIME() STATS()     STEP()      STRCAT()    STRIP()
-    STRIPACCENTS()          STRIPANSI() STRLEN()    STRMATCH()  STRMEM()
-    STRTRUNC()  SUB()       SUBEVAL()   SUBJ()      SUCCESSES() SWITCH()
-    T()         TABLE()     TAN()       TEL()       TERMINFO()  TEXT()
-    TEXTFILE()  TIME()      TIMEFMT()   TRANSLATE() TR()        TRIGGER()
+    OBJMEM()    OEMIT()     OR()        ORBOOL()    ORD()       ORFLAGS()
+    OWNER()     PACK()      PARENT()    PARSE()     PEMIT()     PFIND()
+    PI()        PICKRAND()  PLAYMEM()   PMATCH()    POLL()      PORTS()
+    POS()       POSS()      POWER()     POWERS()    R()         RAND()
+    REGMATCH()  REGMATCHI() REGRAB()    REGRABALL() REGRABALLI()REGRABI()
+    REMAINDER() REMIT()     REMOVE()    REPEAT()    REPLACE()   REST()
+    RESTARTS()  RESTARTSECS()           RESTARTTIME()           REVERSE()
+    REVWORDS()  RIGHT()     RJUST()     RLOC()      ROMAN()     ROOM()
+    ROUND()     RPAD()      RXLEVEL()   S()         SCRAMBLE()  SEARCH()
+    SECS()      SECURE()    SET()       SETDIFF()   SETINTER()  SETNAME()
+    SETPARENT() SETQ()      SETR()      SETUNION()  SHA1()      SHL()
+    SHR()       SHUFFLE()   SIGN()      SIN()       SINGLETIME()SORT()
+    SORTBY()    SPACE()     SPELLNUM()  SPLICE()    SQL()       SQRT()
+    SQUISH()    STARTSECS() STARTTIME() STATS()     STEP()      STRCAT()
+    STRIP()     STRIPACCENTS()          STRIPANSI() STRLEN()    STRMATCH()
+    STRMEM()    STRTRUNC()  SUB()       SUBEVAL()   SUBJ()      SUCCESSES()
+    SWITCH()    T()         TABLE()     TAN()       TEL()       TERMINFO()
+    TEXT()      TEXTFILE()  TIME()      TIMEFMT()   TRANSLATE() TR()
 
 ("help function list4" for more)
 
 & FUNCTION LIST4
 FUNCTION LIST (continued)
 
-    TRIM()      TRUNC()     TXLEVEL()   TYPE()      U()         UCSTR()
-    UDEFAULT()  ULOCAL()    UNPACK()    V()         VADD()      VALID()
-    VCROSS()    VDIM()      VDOT()      VERSION()   VISIBLE()   VMAG()
-    VMUL()      VSUB()      VUNIT()     WHERE()     WIDTH()     WIPE()
-    WORDPOS()   WORDS()     WRAP()      WRITETIME() XGET()      XOR()
-    ZFUN()      ZONE()      ZWHO()
+    TRIGGER()   TRIM()      TRUNC()     TXLEVEL()   TYPE()      U()
+    UCSTR()     UDEFAULT()  ULOCAL()    UNPACK()    V()         VADD()
+    VALID()     VCROSS()    VDIM()      VDOT()      VERSION()   VISIBLE()
+    VMAG()      VMUL()      VSUB()      VUNIT()     WHERE()     WIDTH()
+    WIPE()      WORDPOS()   WORDS()     WRAP()      WRITETIME() XGET()
+    XOR()       ZFUN()      ZONE()      ZWHO()
 
 & FUNCTIONS
 FUNCTIONS
@@ -7490,7 +7522,7 @@ GARBAGE
   It is best to leave garbage alone, and softcode should see these gaps between
   valid dbrefs in the same way as if they were accessing dbrefs beyond the end
   of the valid database.
- 
+
   Related Topics: @stats, stats()
 
 & GENDER
@@ -8261,7 +8293,7 @@ INSERT()
 
   This function may also be used to append a word to a list.
 
-  Elements of the returned list are separated by <output delim> which defaults to 
+  Elements of the returned list are separated by <output delim> which defaults to
   <input delim> which defaults to a space.
 
   Examples:
@@ -9232,11 +9264,12 @@ LOCK()
 & LOG()
 LOG()
 
-  FUNCTION: log(<number>)
+  FUNCTION: log(<number> [,<base>])
 
-  Returns the result of taking the common logarithm (base 10) of <number>.
-  <number> may be a floating point number, and a floating point result
-  is returned.
+  By default, this returns the common (base 10) logarithm of <number>.  You
+  may optionally specify a different <base>, however for a natural logarithm,
+  use 'e' for <base> or see ln() below.  <number> may be a floating point
+  number, and a floating point result is returned.
 
   Examples:
     > say log(0)
@@ -10665,17 +10698,20 @@ OWNER()
 & PACK()
 PACK()
 
-  FUNCTION: pack(<number>[,<radix>])
+  FUNCTION: pack(<number>[,<radix>[,<baseconv>]])
 
-  Returns the equivalent of the given number using the specified base.
-  The default radix is 64. Bases greater than 10 will be more compact
-  than the original number. Bases less than 10 will be more expanded.
+  Returns the equivalent of the given number using the specified base.  The
+  default radix is 64.  Bases greater than 10 will be more compact than the
+  original number.  Bases less than 10 will be more expanded.
 
-  The inverse function of pack is unpack. pack and unpack are designed
-  to support the base-36 radix conversion used in Myrddin's popular
-  Bulletin Board. For this reason, and to support bases: 2, 8, and 16,
-  this conversion is not the radix-64 conversion used in Unix-to-Unix
-  copy (uuencode).
+  By default, this conversion is compatible with the codes used in Myrddin's
+  popular Bulletin Board, and they are also valid for an attribute name
+  (except for the first letter).  This set is:
+
+    0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz@$
+
+  This set is not the same as Unix-to-Unix copy (uuencode).  Optionally, with
+  boolean <baseconv>, the behavior changes to be compatible with baseconv().
 
   Examples:
     >think pack(629126998)
@@ -10687,7 +10723,7 @@ PACK()
     >think pack(-629126998)
     -bVxTM
 
-  Related Topics: unpack
+  Related Topics: baseconv, unpack
 
 & PAGE
 PAGE
@@ -13951,11 +13987,20 @@ UNINSPECTED
 & UNPACK()
 UNPACK()
 
-  FUNCTION: unpack(<packed number>[,<radix>])
+  FUNCTION: unpack(<packed number>[,<radix>[,<baseconv>]])
 
   Returns the equivalent normal base-10 number of the given
-  packed-number using the specified base. The default radix is 64.
+  packed-number using the specified base.  The default radix is 64.
   The inverse function of unpack is pack.
+
+  By default, this conversion is compatible with the codes used in Myrddin's
+  popular Bulletin Board, and they are also valid for an attribute name
+  (except for the first letter).  This set is:
+
+    0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz@$
+
+  This set is not the same as Unix-to-Unix copy (uuencode).  Optionally, with
+  boolean <baseconv>, the behavior changes to be compatible with baseconv().
 
   Examples:
     >think unpack(bVxTM)
@@ -13963,7 +14008,7 @@ UNPACK()
     >think unpack(1111,2)
     15
 
-  Related Topics: pack().
+  Related Topics: baseconv(), pack().
 
 & USE
 USE
