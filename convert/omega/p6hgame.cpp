@@ -769,6 +769,8 @@ void P6H_GAME::ValidateFlags() const
                          | DBF_NEW_STRINGS
                          | DBF_TYPE_GARBAGE
                          | DBF_LESS_GARBAGE
+                         | DBF_NO_TEMPLE
+                         | DBF_SPLIT_IMMORTAL
                          | DBF_SPIFFY_LOCKS;
 
     const int iMand177p40 = DBF_NEW_FLAGS
@@ -2263,6 +2265,8 @@ void P6H_GAME::ConvertFromT5X()
             | DBF_SPIFFY_LOCKS
             | DBF_NEW_FLAGS
             | DBF_NEW_POWERS
+            | DBF_NO_TEMPLE
+            | DBF_SPLIT_IMMORTAL
             | DBF_LABELS);
 
     // savedtime
@@ -2546,7 +2550,7 @@ void P6H_GAME::ConvertFromT5X()
                             {
                                 P6H_ATTRINFO *pai = new P6H_ATTRINFO;
                                 pai->SetName(StringClone(itFound->second));
-
+                                pai->SetDerefs(0);
                                 pai->SetValue(StringClone((*itAttr)->m_pValueUnencoded));
                                 pai->SetOwner((*itAttr)->m_dbOwner);
 
@@ -2590,6 +2594,10 @@ void P6H_GAME::ConvertFromT5X()
 
         AddObject(poi);
     }
+
+    // Set database size hints.
+    //
+    SetSizeHint(g_t5xgame.m_mObjects.size());
 
     // Release memory that we allocated.
     //

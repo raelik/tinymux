@@ -17,37 +17,15 @@
 #include "mudconf.h"
 #include "svdrand.h"
 
-// From bsd.cpp.
-//
-void close_sockets(bool emergency, const UTF8 *message);
-#if defined(HAVE_WORKING_FORK)
-void boot_slave(dbref executor, dbref caller, dbref enactor, int eval, int key);
-void CleanUpSlaveSocket(void);
-void CleanUpSlaveProcess(void);
-#ifdef STUB_SLAVE
-void CleanUpStubSlaveSocket(void);
-void WaitOnStubSlaveProcess(void);
-void boot_stubslave(dbref executor, dbref caller, dbref enactor, int key);
-extern "C" MUX_RESULT DCL_API pipepump(void);
-#endif // STUB_SLAVE
-#endif // HAVE_WORKING_FORK
-#ifdef UNIX_SSL
-void CleanUpSSLConnections(void);
-#endif
-
-#if defined(WINDOWS_NETWORKING)
-extern CRITICAL_SECTION csDescriptorList;
-#endif // WINDOWS_NETWORKING
-
-extern NAMETAB sigactions_nametab[];
-
 // From conf.cpp
 //
 void cf_log_notfound(dbref, const UTF8 *, const UTF8 *, const UTF8 *);
 int  cf_modify_bits(int *, UTF8 *, void *, UINT32, dbref, UTF8 *);
 void DCL_CDECL cf_log_syntax(dbref player, __in_z UTF8 *cmd, __in_z const UTF8 *fmt, ...);
 void ValidateConfigurationDbrefs(void);
+#if defined(HAVE_IN_ADDR)
 bool MakeCanonicalIPv4(const UTF8 *str, in_addr_t *pnIP);
+#endif
 int  cf_read(void);
 void cf_init(void);
 void cf_list(dbref, UTF8 *, UTF8 **);
@@ -831,8 +809,9 @@ extern int anum_alc_top;
 #define CRYPT_MD5         0x00000020UL
 #define CRYPT_SHA256      0x00000040UL
 #define CRYPT_SHA512      0x00000080UL
-#define CRYPT_P6H         0x00000100UL  // From PennMUSH flatfile.
-#define CRYPT_OTHER       0x00000200UL  // Not recognized.
+#define CRYPT_P6H_XX      0x00000100UL  // From PennMUSH flatfile (XX... style).
+#define CRYPT_P6H_VAHT    0x00000200UL  // From PennMUSH flatfile (V:ALGO:HASH:TIMESTAMP)
+#define CRYPT_OTHER       0x00000400UL  // Not recognized.
 
 extern NAMETAB method_nametab[];
 
@@ -1008,57 +987,12 @@ void list_system_resources(dbref player);
 int DoThingToThingVisibility(dbref looker, dbref lookee, int action_state);
 #endif // WOD_REALMS
 
-typedef struct
-{
-    int    port;
-    SOCKET socket;
-#ifdef UNIX_SSL
-    bool   fSSL;
-#endif
-} PortInfo;
-
-#define MAX_LISTEN_PORTS 10
-#ifdef UNIX_SSL
-extern bool initialize_ssl();
-extern void shutdown_ssl();
-
-extern PortInfo aMainGamePorts[MAX_LISTEN_PORTS * 2];
-#else
-extern PortInfo aMainGamePorts[MAX_LISTEN_PORTS];
-#endif
-extern int      nMainGamePorts;
-
-#if defined(UNIX_NETWORKING_SELECT)
-extern int maxd;
-#endif // UNIX_NETWORKING_SELECT
-
-extern unsigned int ndescriptors;
-
 extern long DebugTotalFiles;
-extern long DebugTotalSockets;
-
-#if defined(WINDOWS_NETWORKING)
-extern bool bUseCompletionPorts;
-extern long DebugTotalThreads;
-extern long DebugTotalSemaphores;
-extern HANDLE hGameProcess;
-typedef BOOL __stdcall FCANCELIO(HANDLE hFile);
-typedef BOOL __stdcall FGETPROCESSTIMES(HANDLE hProcess,
-    LPFILETIME pftCreate, LPFILETIME pftExit, LPFILETIME pftKernel,
-    LPFILETIME pftUser);
-extern FCANCELIO *fpCancelIo;
-extern FGETPROCESSTIMES *fpGetProcessTimes;
-#endif // WINDOWS_NETWORKING
-
 extern pid_t game_pid;
 
 // From timer.cpp
 //
 void init_timer(void);
-#if defined(WINDOWS_NETWORKING)
-void Task_FreeDescriptor(void *arg_voidptr, int arg_Integer);
-void Task_DeferredClose(void *arg_voidptr, int arg_Integer);
-#endif // WINDOWS_NETWORKING
 void dispatch_DatabaseDump(void *pUnused, int iUnused);
 void dispatch_FreeListReconstruction(void *pUnused, int iUnused);
 void dispatch_IdleCheck(void *pUnused, int iUnused);
@@ -1066,7 +1000,6 @@ void dispatch_CheckEvents(void *pUnused, int iUnused);
 #ifndef MEMORY_BASED
 void dispatch_CacheTick(void *pUnused, int iUnused);
 #endif
-
 
 // Using a heap as the data structure for representing this priority
 // has some attributes which we depend on:

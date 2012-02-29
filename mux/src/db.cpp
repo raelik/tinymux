@@ -3606,7 +3606,7 @@ void dump_restart_db(void)
     putref(f, nMainGamePorts);
     for (int i = 0; i < nMainGamePorts; i++)
     {
-        putref(f, aMainGamePorts[i].port);
+        putref(f, aMainGamePorts[i].msa.Port());
         putref(f, aMainGamePorts[i].socket);
 #ifdef UNIX_SSL
         putref(f, aMainGamePorts[i].fSSL ? 1 : 0);
@@ -3625,7 +3625,7 @@ void dump_restart_db(void)
         putref(f, d->connected_at.ReturnSeconds());
         putref(f, d->command_count);
         putref(f, d->timeout);
-        putref(f, d->host_info);
+        putref(f, 0);
         putref(f, d->player);
         putref(f, d->last_time.ReturnSeconds());
         putref(f, d->raw_input_state);
@@ -3679,9 +3679,14 @@ void load_restart_db(void)
         nMainGamePorts = getref(f);
         for (int i = 0; i < nMainGamePorts; i++)
         {
-            aMainGamePorts[i].port   = getref(f);
-            mux_assert(aMainGamePorts[i].port > 0);
+            unsigned short usPort = getref(f);
             aMainGamePorts[i].socket = getref(f);
+            socklen_t n = aMainGamePorts[i].msa.maxaddrlen();
+            if (  0 != getsockname(aMainGamePorts[i].socket, aMainGamePorts[i].msa.sa(), &n)
+               || usPort != aMainGamePorts[i].msa.Port())
+            {
+                mux_assert(0);
+            }
 
 #if defined(UNIX_NETWORKING_SELECT)
             if (maxd <= aMainGamePorts[i].socket)
@@ -3746,7 +3751,7 @@ void load_restart_db(void)
         d->connected_at.SetSeconds(getref(f));
         d->command_count = getref(f);
         d->timeout = getref(f);
-        d->host_info = getref(f);
+        getref(f); // Eat host_info
         d->player = getref(f);
         d->last_time.SetSeconds(getref(f));
         memset(d->nvt_him_state, OPTION_NO, 256);
