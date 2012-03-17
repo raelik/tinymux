@@ -740,63 +740,77 @@ const UTF8 *Moniker(dbref thing)
     return pReturn;
 }
 
-void s_Name(dbref thing, const UTF8 *s)
+void free_Names(OBJ *p)
 {
-    atr_add_raw(thing, A_NAME, s);
 #ifndef MEMORY_BASED
-    if (db[thing].name)
+    if (p->name)
     {
         if (mudconf.cache_names)
         {
-            if (db[thing].name == db[thing].purename)
+            if (p->name == p->purename)
             {
-                db[thing].purename = NULL;
+                p->purename = NULL;
             }
-            if (db[thing].name == db[thing].moniker)
+            if (p->name == p->moniker)
             {
-                db[thing].moniker = NULL;
+                p->moniker = NULL;
             }
         }
-        MEMFREE(db[thing].name);
-        db[thing].name = NULL;
+        MEMFREE(p->name);
+        p->name = NULL;
     }
-    if (s)
+#endif // !MEMORY_BASED
+
+    if (mudconf.cache_names)
+    {
+        if (p->purename)
+        {
+            MEMFREE(p->purename);
+            p->purename = NULL;
+        }
+        if (p->moniker)
+        {
+            MEMFREE(p->moniker);
+            p->moniker = NULL;
+        }
+    }
+}
+
+
+void s_Name(dbref thing, const UTF8 *s)
+{
+    free_Names(&db[thing]);
+    atr_add_raw(thing, A_NAME, s);
+#ifndef MEMORY_BASED
+    if (NULL != s)
     {
         db[thing].name = StringClone(s);
     }
 #endif // !MEMORY_BASED
+}
+
+void free_Moniker(OBJ *p)
+{
     if (mudconf.cache_names)
     {
-        if (db[thing].purename)
+#ifndef MEMORY_BASED
+        if (p->name == p->moniker)
         {
-            MEMFREE(db[thing].purename);
-            db[thing].purename = NULL;
+            p->moniker = NULL;
         }
-        if (db[thing].moniker)
+#endif // !MEMORY_BASED
+        if (p->moniker)
         {
-            MEMFREE(db[thing].moniker);
-            db[thing].moniker = NULL;
+            MEMFREE(p->moniker);
+            p->moniker = NULL;
         }
     }
 }
 
 void s_Moniker(dbref thing, const UTF8 *s)
 {
+    free_Moniker(&db[thing]);
     atr_add_raw(thing, A_MONIKER, s);
-    if (mudconf.cache_names)
-    {
-#ifndef MEMORY_BASED
-        if (db[thing].name == db[thing].moniker)
-        {
-            db[thing].moniker = NULL;
-        }
-#endif // !MEMORY_BASED
-        if (db[thing].moniker)
-        {
-            MEMFREE(db[thing].moniker);
-            db[thing].moniker = NULL;
-        }
-    }
 }
 
 void s_Pass(dbref thing, const UTF8 *s)
@@ -3030,12 +3044,18 @@ void db_grow(dbref newtop)
 
 void db_free(void)
 {
-    char *cp;
+#ifdef SELFCHECK
+    delete_all_player_names();
+    for (dbref thing = 0; thing < mudstate.db_top; thing++)
+    {
+        free_Names(&db[thing]);
+    }
+#endif
 
     if (db != NULL)
     {
         db -= SIZE_HACK;
-        cp = (char *)db;
+        char *cp = (char *)db;
         MEMFREE(cp);
         cp = NULL;
         db = NULL;

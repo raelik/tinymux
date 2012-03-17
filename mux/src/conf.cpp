@@ -1415,7 +1415,7 @@ static int add_helpfile(dbref player, UTF8 *cmd, UTF8 *str, bool bEval)
         cmdp->cmdname = StringClone(pCmdName);
         cmdp->extra = mudstate.nHelpDesc;
         cmdp->handler = do_help;
-        cmdp->hookmask = 0;
+        cmdp->flags = CEF_ALLOC;
         cmdp->perms = CA_PUBLIC;
         cmdp->switches = NULL;
 
@@ -1467,18 +1467,19 @@ static CF_HAND(cf_raw_helpfile)
 //
 static NAMETAB hook_names[] =
 {
-    {T("after"),      3, 0, HOOK_AFTER},
-    {T("before"),     3, 0, HOOK_BEFORE},
-    {T("fail"),       3, 0, HOOK_AFAIL},
-    {T("ignore"),     3, 0, HOOK_IGNORE},
-    {T("igswitch"),   3, 0, HOOK_IGSWITCH},
-    {T("permit"),     3, 0, HOOK_PERMIT},
-    {T("args"),       3, 0, HOOK_ARGS},
+    {T("after"),      3, 0, CEF_HOOK_AFTER},
+    {T("before"),     3, 0, CEF_HOOK_BEFORE},
+    {T("fail"),       3, 0, CEF_HOOK_AFAIL},
+    {T("ignore"),     3, 0, CEF_HOOK_IGNORE},
+    {T("igswitch"),   3, 0, CEF_HOOK_IGSWITCH},
+    {T("permit"),     3, 0, CEF_HOOK_PERMIT},
+    {T("args"),       3, 0, CEF_HOOK_ARGS},
     {(UTF8 *)NULL,    0, 0, 0}
 };
 
 static CF_HAND(cf_hook)
 {
+    UNUSED_PARAMETER(vp);
     UNUSED_PARAMETER(pExtra);
     UNUSED_PARAMETER(nExtra);
     UNUSED_PARAMETER(player);
@@ -1508,7 +1509,7 @@ static CF_HAND(cf_hook)
        return retval;
     }
 
-    *vp = cmdp->hookmask;
+    int t = cmdp->flags;
     mux_strncpy(playbuff, str, sizeof(playbuff)-1);
     hookptr = mux_strtok_parse(&tts);
     while (hookptr != NULL)
@@ -1519,7 +1520,7 @@ static CF_HAND(cf_hook)
           if (search_nametab(GOD, hook_names, hookptr+1, &hookflg))
           {
              retval = 0;
-             *vp = *vp & ~hookflg;
+             t = t & ~hookflg;
           }
        }
        else
@@ -1527,12 +1528,12 @@ static CF_HAND(cf_hook)
           if (search_nametab(GOD, hook_names, hookptr, &hookflg))
           {
              retval = 0;
-             *vp = *vp | hookflg;
+             t = t | hookflg;
           }
        }
        hookptr = mux_strtok_parse(&tts);
     }
-    cmdp->hookmask = *vp;
+    cmdp->flags = t;
     return retval;
 }
 
@@ -1843,7 +1844,7 @@ static CONFPARM conftable[] =
     {T("have_zones"),                cf_bool,        CA_STATIC, CA_PUBLIC,   (int *)&mudconf.have_zones,      NULL,               0},
     {T("help_executor"),             cf_dbref,       CA_GOD,    CA_WIZARD,   &mudconf.help_executor,          NULL,               0},
     {T("helpfile"),                  cf_helpfile,    CA_STATIC, CA_DISABLED, NULL,                            NULL,               0},
-    {T("hook_cmd"),                  cf_hook,        CA_GOD,    CA_GOD,      &mudconf.hook_cmd,               NULL,               0},
+    {T("hook_cmd"),                  cf_hook,        CA_GOD,    CA_GOD,      NULL,                            NULL,               0},
     {T("hook_obj"),                  cf_dbref,       CA_GOD,    CA_GOD,      &mudconf.hook_obj,               NULL,               0},
     {T("hostnames"),                 cf_bool,        CA_GOD,    CA_WIZARD,   (int *)&mudconf.use_hostname,    NULL,               0},
     {T("idle_interval"),             cf_int,         CA_GOD,    CA_WIZARD,   &mudconf.idle_interval,          NULL,               0},
